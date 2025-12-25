@@ -19,7 +19,6 @@ export const generateToken: any = (user: any, res: Response) => {
     httpOnly: true,
     secure: true,
     sameSite: "none",
-    domain: ".harmanxze.com",
     path: "/",
     maxAge: 15 * 24 * 60 * 60 * 1000,
   });

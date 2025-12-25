@@ -7,6 +7,7 @@ import { ApiResponse } from "../utils/apiResponse";
 import { ApiError } from "../utils/apiError";
 import { JwtPayload } from "jsonwebtoken";
 import { cache } from "../utils/cache";
+
 export const signup: any = async (req: Request, res: Response) => {
   const parsed = SignUpSchema.safeParse(req.body);
 
