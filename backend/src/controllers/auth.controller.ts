@@ -34,17 +34,17 @@ export const signup: any = async (req: Request, res: Response) => {
 
   const hashedPassword = bcryptjs.hashSync(body.password, 10);
 
-  // const user = await prisma.user.create({
-  //   data: {
-  //     name: body.name,
-  //     email: body.email,
-  //     password: hashedPassword,
-  //   },
-  // });
+  const user = await prisma.user.create({
+    data: {
+      name: body.name,
+      email: body.email,
+      password: hashedPassword,
+    },
+  });
 
-  // if (user) {
-  //   generateToken(user, res);
-  // }
+  if (user) {
+    generateToken(user, res);
+  }
 
   res.status(200).json(new ApiResponse(200, "Sign up successful"));
 };
