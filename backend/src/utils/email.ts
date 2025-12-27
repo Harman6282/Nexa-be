@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { ApiError } from "./apiError";
+import { Job, Worker } from "bullmq";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -57,10 +58,26 @@ export async function sendVerificationEmail(
   }
 }
 
+const welcomeEmailWorker = new Worker(
+  "welcomeEmailQueue",
+  async (Job) => {
+    const email = Job.data.email;
+    await sendWelcomeEmail(email);
+  },
+  {
+    connection: {
+      host: "localhost",
+      port: 6379,
+    },
+  }
+);
+
 export async function sendWelcomeEmail(email: string) {
   if (!process.env.RESEND_API_KEY) {
     throw new Error("RESEND_API_KEY is not defined");
   }
+
+  console.log("Sending welcome email to:", email);
 
   try {
     const { data, error } = await resend.emails.send({
@@ -113,7 +130,6 @@ export async function sendWelcomeEmail(email: string) {
     };
   } catch (err) {
     console.error("Send verification email failed:", err);
-
     throw err;
   }
 }

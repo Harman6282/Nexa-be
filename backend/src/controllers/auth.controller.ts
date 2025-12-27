@@ -8,6 +8,7 @@ import { ApiError } from "../utils/apiError";
 import { JwtPayload } from "jsonwebtoken";
 import { cache } from "../utils/cache";
 import { sendVerificationEmail, sendWelcomeEmail } from "../utils/email";
+import { pushEmailToQueue } from "../mq/welcomeEmail";
 
 export const signup: any = async (req: Request, res: Response) => {
   const parsed = SignUpSchema.safeParse(req.body);
@@ -110,7 +111,7 @@ export const verifyToken = async (req: Request, res: Response) => {
     },
   });
 
-  await sendWelcomeEmail(email);
+  await pushEmailToQueue(email);
 
   res.status(200).json(new ApiResponse(200, "Email verified successfully"));
 };
