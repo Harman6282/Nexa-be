@@ -7,7 +7,7 @@ import { ApiResponse } from "../utils/apiResponse";
 import { ApiError } from "../utils/apiError";
 import { JwtPayload } from "jsonwebtoken";
 import { cache } from "../utils/cache";
-import { sendVerificationEmail } from "../utils/resend";
+import { sendVerificationEmail, sendWelcomeEmail } from "../utils/email";
 
 export const signup: any = async (req: Request, res: Response) => {
   const parsed = SignUpSchema.safeParse(req.body);
@@ -34,16 +34,6 @@ export const signup: any = async (req: Request, res: Response) => {
   }
 
   const hashedPassword = bcryptjs.hashSync(body.password, 10);
-
-  /* 
-  generate verification token 
-   save token to db with expiry 
-  send email with token
-  ? check verify token endpoint to verify user
-  ? sign jwt token 
-  ? then update user as verified: true
-
-  */
 
   const emailVerificationToken = Math.floor(
     100000 + Math.random() * 900000
@@ -119,6 +109,8 @@ export const verifyToken = async (req: Request, res: Response) => {
       emailVerifyTokenExpiry: null,
     },
   });
+
+  await sendWelcomeEmail(email);
 
   res.status(200).json(new ApiResponse(200, "Email verified successfully"));
 };
