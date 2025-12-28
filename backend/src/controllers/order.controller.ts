@@ -6,6 +6,7 @@ import { ApiResponse } from "../utils/apiResponse";
 import { CreateOrderSchema } from "../schema/products";
 import razorpayInstance from "../utils/razorpay";
 import crypto from "crypto";
+import { pushOrderToEmailQueue } from "../mq/orderConfirmEmail";
 
 export const verifyPayment: any = async (req: Request, res: Response) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
@@ -46,6 +47,10 @@ export const createOrder: any = async (req: Request, res: Response) => {
       parsed.error.errors[0].message,
       parsed.error.errors
     );
+  }
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    throw new ApiError(404, "User not found");
   }
 
   const { cartId, addressId } = parsed.data;
@@ -112,6 +117,21 @@ export const createOrder: any = async (req: Request, res: Response) => {
       },
     },
   });
+
+  const emailData = {
+    orderId: newOrder.id,
+    email: user.email,
+    customerName: user.name,
+    orderDate: newOrder.createdAt.toDateString(),
+    totalAmount: newOrder.total,
+    paymentmethod: "Razorpay",
+  };
+
+  if (newOrder) {
+    await pushOrderToEmailQueue(emailData);
+  }
+
+  
 
   await prisma.cartItem.deleteMany({
     where: { cartId },

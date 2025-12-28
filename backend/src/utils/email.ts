@@ -4,6 +4,11 @@ import { Job, Worker } from "bullmq";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+const connection = {
+  host: "localhost",
+  port: 6379,
+};
+
 export async function sendVerificationEmail(
   email: string,
   verificationToken: string
@@ -65,10 +70,7 @@ const welcomeEmailWorker = new Worker(
     await sendWelcomeEmail(email);
   },
   {
-    connection: {
-      host: "localhost",
-      port: 6379,
-    },
+    connection,
   }
 );
 
@@ -76,8 +78,6 @@ export async function sendWelcomeEmail(email: string) {
   if (!process.env.RESEND_API_KEY) {
     throw new Error("RESEND_API_KEY is not defined");
   }
-
-  console.log("Sending welcome email to:", email);
 
   try {
     const { data, error } = await resend.emails.send({
@@ -111,6 +111,110 @@ export async function sendWelcomeEmail(email: string) {
         </table>
 
         
+      `,
+    });
+
+    if (error) {
+      console.error("Resend email error:", error);
+      throw new ApiError(
+        error.statusCode || 500,
+        "Failed to send verification email",
+        error.message ? [error.message] : undefined
+      );
+    }
+
+    return {
+      success: true,
+      messageId: data?.id,
+      error: error,
+    };
+  } catch (err) {
+    console.error("Send verification email failed:", err);
+    throw err;
+  }
+}
+
+// order confirmation email
+
+const orderConfirmEmailWorker = new Worker(
+  "orderConfirmEmailQueue",
+  async (job) => {
+    const {
+      email,
+      orderId,
+      customerName,
+      orderDate,
+      totalAmount,
+      paymentmethod,
+    } = job.data;
+    await sendOrderConfirmationEmail(
+      email,
+      orderId,
+      customerName,
+      orderDate,
+      totalAmount,
+      paymentmethod
+    );
+  }
+);
+
+export async function sendOrderConfirmationEmail(
+  email: string,
+  orderId: string,
+  customerName: string,
+  orderDate: string,
+  totalAmount: number,
+  paymentmethod: string
+) {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error("RESEND_API_KEY is not defined");
+  }
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: "Nexa Clothing Store <send@nexa.harmanxze.com>",
+      to: [email],
+      subject: "Your order has been confirmed 🎉",
+      html: `
+     
+      <!-- Header --> 
+      <tr> 
+       <td style="padding: 24px; text-align:center; background-color:#000000; color:#ffffff;"> 
+       <h1 style="margin:0; font-size:22px;">Nexa Fashion</h1> 
+       </td> 
+      </tr>
+        <!-- Body --> 
+        <tr> 
+        <td style="padding: 32px;"> 
+         <h2 style="margin-top:0; font-size:20px;">Order Confirmed 🎉</h2> 
+         <p style="font-size:14px; color:#333333;"> Hi <strong>${customerName}</strong>, 
+         </p> <p style="font-size:14px; color:#333333;"> Thank you for your order! We’ve successfully received it and it’s now being processed. </p> 
+         <!-- Order Details --> 
+         <table width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0; font-size:14px;">
+         <tr> 
+         <td style="padding: 6px 0; color:#555;">Order ID:</td> <td style="padding: 6px 0; text-align:right;"><strong>${orderId}</strong></td> 
+         </tr> 
+         <tr> 
+          <td style="padding: 6px 0; color:#555;">Order Date:</td> 
+          <td style="padding: 6px 0; text-align:right;">${orderDate}</td> 
+          </tr> 
+    // <tr> 
+    // <td style="padding: 6px 0; color:#555;">Items:</td> 
+    // <td style="padding: 6px 0; text-align:right;">{{itemsSummary}}</td>  
+    // </tr> 
+          <tr> <td style="padding: 6px 0; color:#555;">Payment Method:</td> <td style="padding: 6px 0; text-align:right;">${paymentmethod}</td> 
+          </tr> 
+          <tr> <td style="padding: 12px 0; font-size:16px;"><strong>Total Paid:</strong></td> 
+          <td style="padding: 12px 0; text-align:right; font-size:16px;"> <strong>₹${totalAmount}</strong> </td> </tr> 
+          </table> <p style="font-size:14px; color:#333333;"> You’ll receive another email once your order is shipped. </p> 
+          <p style="font-size:14px; color:#333333;"> If you have any questions, feel free to reach out to us. </p> 
+          <p style="font-size:14px; color:#333333; margin-bottom:0;"> Thanks for shopping with us,<br /> <strong>Nexa Fashion Team</strong> 
+          </p>
+           </td> </tr>
+            <!-- Footer --> 
+            <tr> <td style="padding: 16px; text-align:center; background-color:#f9f9f9; font-size:12px; color:#777;"> © 2025 Nexa Fashion · Demo Project </td> 
+            </tr> </table> </td> </tr> </table>
+
       `,
     });
 
