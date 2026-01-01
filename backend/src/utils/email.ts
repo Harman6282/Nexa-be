@@ -155,6 +155,9 @@ const orderConfirmEmailWorker = new Worker(
       totalAmount,
       paymentmethod
     );
+  },
+  {
+    connection,
   }
 );
 

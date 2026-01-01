@@ -7,6 +7,7 @@ import { CreateOrderSchema } from "../schema/products";
 import razorpayInstance from "../utils/razorpay";
 import crypto from "crypto";
 import { pushOrderToEmailQueue } from "../mq/orderConfirmEmail";
+import shortid from "shortid";
 
 export const verifyPayment: any = async (req: Request, res: Response) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
@@ -32,6 +33,23 @@ export const verifyPayment: any = async (req: Request, res: Response) => {
     },
     include: { items: true },
   });
+
+  const user = await prisma.user.findUnique({
+    where: { id: updatedOrder.userId },
+  });
+
+  const emailData = {
+    orderId: updatedOrder.id,
+    email: user?.email as string,
+    customerName: user?.name as string,
+    orderDate: updatedOrder.createdAt.toDateString(),
+    totalAmount: updatedOrder.total,
+    paymentmethod: "Razorpay",
+  };
+
+  if (updatedOrder) {
+    await pushOrderToEmailQueue(emailData);
+  }
 
   return res.json(
     new ApiResponse(200, updatedOrder, "Payment verified successfully")
@@ -86,7 +104,7 @@ export const createOrder: any = async (req: Request, res: Response) => {
   const options = {
     amount: total * 100,
     currency: "INR",
-    receipt: `receipt_${Date.now()}`,
+    receipt: shortid.generate(),
   };
 
   //? create razorpay order here
@@ -118,21 +136,6 @@ export const createOrder: any = async (req: Request, res: Response) => {
     },
   });
 
-  const emailData = {
-    orderId: newOrder.id,
-    email: user.email,
-    customerName: user.name,
-    orderDate: newOrder.createdAt.toDateString(),
-    totalAmount: newOrder.total,
-    paymentmethod: "Razorpay",
-  };
-
-  if (newOrder) {
-    await pushOrderToEmailQueue(emailData);
-  }
-
-  
-
   await prisma.cartItem.deleteMany({
     where: { cartId },
   });
@@ -143,7 +146,6 @@ export const createOrder: any = async (req: Request, res: Response) => {
       {
         order: newOrder,
         razorpayOrder,
-        key: process.env.RAZORPAY_KEY_ID, // send to frontend
       },
       "Order created successfully"
     )
