@@ -160,23 +160,28 @@ export const updateProduct: any = async (req: Request, res: Response) => {
 
 export const deleteProduct: any = async (req: Request, res: Response) => {
   const { id: productId } = req.params;
+
   if (!productId) {
-    throw new ApiError(401, "Enter valid product Id");
+    throw new ApiError(400, "Invalid product id");
   }
 
-  const product = await prisma.product.delete({
-    where: {
-      id: productId,
-    },
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
   });
 
   if (!product) {
     throw new ApiError(404, "Product not found");
   }
+
+  await prisma.product.delete({
+    where: { id: productId },
+  });
+
   return res
     .status(200)
     .json(new ApiResponse(200, "Product deleted successfully"));
 };
+
 export const collectionProducts: any = async (req: Request, res: Response) => {
   let products;
   const cachekey = "collection_products";
@@ -198,6 +203,7 @@ export const collectionProducts: any = async (req: Request, res: Response) => {
 
   return res.status(200).json(new ApiResponse(200, products, "products found"));
 };
+
 export const getProductById: any = async (req: Request, res: Response) => {
   const { id: productId } = req.params;
   if (!productId) {
