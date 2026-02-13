@@ -7,10 +7,13 @@ import { PrismaClient } from "@prisma/client";
 import errorHandler from "./middlewares/errorHandler";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
+import Logger from "./core/Logger";
+import { requestLogger } from "./core/requestLogger";
 
 const app = express();
 app.set("trust proxy", 1);
-import rateLimit from "express-rate-limit";
+app.use(requestLogger);
 
 app.use(express.json());
 app.use(cookieParser());
@@ -36,4 +39,5 @@ app.use(errorHandler);
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT} 👍`);
+  Logger.info(`Server is running on port ${PORT} 👍`);
 });

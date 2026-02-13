@@ -6,6 +6,8 @@ import { ApiResponse } from "../utils/apiResponse";
 import { CreateOrderSchema } from "../schema/products";
 import razorpayInstance from "../utils/razorpay";
 import crypto from "crypto";
+import { pushOrderToEmailQueue } from "../mq/orderConfirmEmail";
+import shortid from "shortid";
 
 export const verifyPayment: any = async (req: Request, res: Response) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
@@ -32,6 +34,23 @@ export const verifyPayment: any = async (req: Request, res: Response) => {
     include: { items: true },
   });
 
+  const user = await prisma.user.findUnique({
+    where: { id: updatedOrder.userId },
+  });
+
+  const emailData = {
+    orderId: updatedOrder.id,
+    email: user?.email as string,
+    customerName: user?.name as string,
+    orderDate: updatedOrder.createdAt.toDateString(),
+    totalAmount: updatedOrder.total,
+    paymentmethod: "Razorpay",
+  };
+
+  if (updatedOrder) {
+    await pushOrderToEmailQueue(emailData);
+  }
+
   return res.json(
     new ApiResponse(200, updatedOrder, "Payment verified successfully")
   );
@@ -46,6 +65,10 @@ export const createOrder: any = async (req: Request, res: Response) => {
       parsed.error.errors[0].message,
       parsed.error.errors
     );
+  }
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    throw new ApiError(404, "User not found");
   }
 
   const { cartId, addressId } = parsed.data;
@@ -81,7 +104,7 @@ export const createOrder: any = async (req: Request, res: Response) => {
   const options = {
     amount: total * 100,
     currency: "INR",
-    receipt: `receipt_${Date.now()}`,
+    receipt: shortid.generate(),
   };
 
   //? create razorpay order here
@@ -123,7 +146,6 @@ export const createOrder: any = async (req: Request, res: Response) => {
       {
         order: newOrder,
         razorpayOrder,
-        key: process.env.RAZORPAY_KEY_ID, // send to frontend
       },
       "Order created successfully"
     )

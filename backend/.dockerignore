@@ -1,0 +1,32 @@
+
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+
+# Build outputs (handled in Dockerfile instead)
+.next
+dist
+out
+
+# Environment files (secrets must not go into Docker image)
+.env
+.env.*
+!.env.example   # keep a safe example
+
+# OS / Editor junk
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Git files
+.git
+.gitignore
+
+# Docker files (optional, if you don’t want them copied inside image)
+.dockerignore
+Dockerfile*
+
+# Logs
+logs
+*.log

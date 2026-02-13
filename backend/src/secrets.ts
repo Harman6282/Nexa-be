@@ -5,3 +5,6 @@ export const CLOUDINARY_NAME = process.env.CLOUDINARY_CLOUD_NAME!;
 export const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY!;
 export const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET!;
 export const FRONTEND_DOMAIN = process.env.FRONTEND_DOMAIN!;
+
+export const logDirectory = process.env.LOG_DIRECTORY || 'logs';
+export const enviornment = process.env.NODE_ENV || 'development';

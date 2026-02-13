@@ -8,6 +8,7 @@ export const generateToken: any = (user: any, res: Response) => {
       id: user.id,
       email: user.email,
       role: user.role,
+      emailVerified: user.emailVerified,
     },
     JWT_SECRET!,
     {
@@ -19,7 +20,6 @@ export const generateToken: any = (user: any, res: Response) => {
     httpOnly: true,
     secure: true,
     sameSite: "none",
-    domain: ".harmanxze.com",
     path: "/",
     maxAge: 15 * 24 * 60 * 60 * 1000,
   });

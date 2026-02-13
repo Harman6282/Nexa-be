@@ -7,6 +7,9 @@ import { ApiResponse } from "../utils/apiResponse";
 import { ApiError } from "../utils/apiError";
 import { JwtPayload } from "jsonwebtoken";
 import { cache } from "../utils/cache";
+import { sendVerificationEmail, sendWelcomeEmail } from "../utils/email";
+import { pushEmailToQueue } from "../mq/welcomeEmail";
+
 export const signup: any = async (req: Request, res: Response) => {
   const parsed = SignUpSchema.safeParse(req.body);
 
@@ -19,13 +22,13 @@ export const signup: any = async (req: Request, res: Response) => {
   }
   const body = parsed.data;
 
-  const existinguser = await prisma.user.findUnique({
+  const existingUser = await prisma.user.findUnique({
     where: {
       email: body.email,
     },
   });
 
-  if (existinguser) {
+  if (existingUser) {
     throw new ApiError(409, "User already exists", [
       "User with this email already exists",
     ]);
@@ -33,19 +36,84 @@ export const signup: any = async (req: Request, res: Response) => {
 
   const hashedPassword = bcryptjs.hashSync(body.password, 10);
 
+  const emailVerificationToken = Math.floor(
+    100000 + Math.random() * 900000
+  ).toString();
+  const emailVerificationTokenExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes from now
+
   const user = await prisma.user.create({
     data: {
       name: body.name,
       email: body.email,
       password: hashedPassword,
+      emailVerified: false,
+      emailVerifyToken: emailVerificationToken,
+      emailVerifyTokenExpiry: emailVerificationTokenExpiry,
     },
   });
 
-  if (user) {
-    generateToken(user, res);
+  const { messageId, success, error } = await sendVerificationEmail(
+    body.email,
+    emailVerificationToken
+  );
+
+  if (!success) {
+    throw new ApiError(
+      500,
+      "Failed to send verification email",
+      error ? [JSON.stringify(error)] : undefined
+    );
   }
 
-  res.status(200).json(new ApiResponse(200, user, "Sign up successful"));
+  const newUser = {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    emailVerified: user.emailVerified,
+  };
+
+  if (user) {
+    generateToken(newUser, res);
+  }
+
+  res.status(200).json(new ApiResponse(200, newUser, "Sign up successful"));
+};
+
+export const verifyToken = async (req: Request, res: Response) => {
+  const { token, email } = req.body;
+
+  if (!token || !email) {
+    throw new ApiError(400, "Verify token and email are required");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  if (user.emailVerifyToken !== token) {
+    throw new ApiError(401, "Invalid token");
+  }
+
+  if (user.emailVerifyTokenExpiry && user.emailVerifyTokenExpiry < new Date()) {
+    throw new ApiError(401, "Token has expired");
+  }
+
+  await prisma.user.update({
+    where: { email },
+    data: {
+      emailVerified: true,
+      emailVerifyToken: null,
+      emailVerifyTokenExpiry: null,
+    },
+  });
+
+  await pushEmailToQueue(email);
+
+  res.status(200).json(new ApiResponse(200, "Email verified successfully"));
 };
 
 export const login: any = async (req: Request, res: Response) => {
@@ -83,6 +151,7 @@ export const login: any = async (req: Request, res: Response) => {
     name: user.name,
     email: user.email,
     role: user.role,
+    emailVerified: user.emailVerified,
     createdAt: user.createdAt,
   };
 
