@@ -13,6 +13,21 @@ export const verifyPayment: any = async (req: Request, res: Response) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
     req.body;
 
+  const existingOrder = await prisma.order.findUnique({
+    where: { razorpayOrderId: razorpay_order_id },
+    include: { items: true },
+  });
+
+  if (!existingOrder) {
+    throw new ApiError(404, "Order not found");
+  }
+
+  if (existingOrder.paymentStatus === "PAID") {
+    return res.json(
+      new ApiResponse(200, existingOrder, "Payment already verified")
+    );
+  }
+
   const sign = razorpay_order_id + "|" + razorpay_payment_id;
   const expectedSign = crypto
     .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET as string)
@@ -23,15 +38,50 @@ export const verifyPayment: any = async (req: Request, res: Response) => {
     throw new ApiError(400, "Invalid payment signature");
   }
 
-  // update order status
-  const updatedOrder = await prisma.order.update({
-    where: { razorpayOrderId: razorpay_order_id },
-    data: {
-      paymentStatus: "PAID",
-      razorpayPaymentId: razorpay_payment_id,
-      razorpaySignature: razorpay_signature,
-    },
-    include: { items: true },
+  // update order status and remove ordered products from cart only after payment is confirmed
+  const updatedOrder = await prisma.$transaction(async (tx) => {
+    const paidOrder = await tx.order.update({
+      where: { razorpayOrderId: razorpay_order_id },
+      data: {
+        paymentStatus: "PAID",
+        razorpayPaymentId: razorpay_payment_id,
+        razorpaySignature: razorpay_signature,
+      },
+      include: { items: true },
+    });
+
+    const cart = await tx.cart.findUnique({
+      where: { userId: paidOrder.userId },
+      include: { items: true },
+    });
+
+    if (cart && cart.items.length > 0) {
+      const orderedQtyByItemKey = new Map<string, number>();
+      for (const item of paidOrder.items) {
+        const key = `${item.productId}:${item.variantId}`;
+        orderedQtyByItemKey.set(key, (orderedQtyByItemKey.get(key) || 0) + item.quantity);
+      }
+
+      for (const cartItem of cart.items) {
+        const key = `${cartItem.productId}:${cartItem.variantId}`;
+        const orderedQty = orderedQtyByItemKey.get(key);
+
+        if (!orderedQty) continue;
+
+        if (cartItem.quantity > orderedQty) {
+          await tx.cartItem.update({
+            where: { id: cartItem.id },
+            data: { quantity: cartItem.quantity - orderedQty },
+          });
+        } else {
+          await tx.cartItem.delete({
+            where: { id: cartItem.id },
+          });
+        }
+      }
+    }
+
+    return paidOrder;
   });
 
   const user = await prisma.user.findUnique({
@@ -134,10 +184,6 @@ export const createOrder: any = async (req: Request, res: Response) => {
         },
       },
     },
-  });
-
-  await prisma.cartItem.deleteMany({
-    where: { cartId },
   });
 
   return res.json(

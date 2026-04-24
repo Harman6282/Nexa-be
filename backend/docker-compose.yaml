@@ -1,13 +1,37 @@
 services:
   backend:
-    image: harmanxze/nexa-backend:v2
-    container_name: nexa-backend-server
+    image: harmanxze/nexa-backend:latest
+    container_name: nexa-backend
     ports:
       - "3001:3001"
     networks:
       - nexa-network
     env_file: .env
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    container_name: nexa-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - nexa-network
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 networks:
   nexa-network:
     driver: bridge
+
+volumes:
+  redis-data:

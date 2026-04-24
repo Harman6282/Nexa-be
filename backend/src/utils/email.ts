@@ -5,7 +5,7 @@ import { Job, Worker } from "bullmq";
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const connection = {
-  host: "localhost",
+  host: process.env.REDIS_HOST,
   port: 6379,
 };
 
