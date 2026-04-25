@@ -25,7 +25,7 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: [self-hosted]
+    runs-on: [aws-ec2]
     steps:
       - name: Pull image from docker hub
         run: docker pull harmanxze/nexa-backend:latest
@@ -34,21 +34,33 @@ jobs:
         run: docker rm -f nexa-server-container || true
 
       - name: Run docker container
+        env:
+          PORT: ${{ secrets.PORT }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          NODE_ENV: ${{ secrets.NODE_ENV }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
+          RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
+          FRONTEND_DOMAIN: ${{ secrets.FRONTEND_DOMAIN }}
+          LOG_DIRECTORY: ${{ secrets.LOG_DIRECTORY }}
         run: |
-          docker run -d \
-            -p 3001:3001 \
+          docker run -d -p 3001:3001 \
             --name nexa-server-container \
             --restart unless-stopped \
-            -e PORT=${{ secrets.PORT }} \
-            -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
-            -e NODE_ENV=${{ secrets.NODE_ENV }} \
-            -e DATABASE_URL=${{ secrets.DATABASE_URL }} \
-            -e CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }} \
-            -e CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }} \
-            -e CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }} \
-            -e RESEND_API_KEY=${{ secrets.RESEND_API_KEY }} \
-            -e RAZORPAY_KEY_ID=${{ secrets.RAZORPAY_KEY_ID }} \
-            -e RAZORPAY_KEY_SECRET=${{ secrets.RAZORPAY_KEY_SECRET }} \
-            -e FRONTEND_DOMAIN=${{ secrets.FRONTEND_DOMAIN }} \
-            -e LOG_DIRECTORY=${{ secrets.LOG_DIRECTORY }} \
+            -e PORT="$PORT" \
+            -e JWT_SECRET="$JWT_SECRET" \
+            -e NODE_ENV="$NODE_ENV" \
+            -e DATABASE_URL="$DATABASE_URL" \
+            -e CLOUDINARY_CLOUD_NAME="$CLOUDINARY_CLOUD_NAME" \
+            -e CLOUDINARY_API_KEY="$CLOUDINARY_API_KEY" \
+            -e CLOUDINARY_API_SECRET="$CLOUDINARY_API_SECRET" \
+            -e RESEND_API_KEY="$RESEND_API_KEY" \
+            -e RAZORPAY_KEY_ID="$RAZORPAY_KEY_ID" \
+            -e RAZORPAY_KEY_SECRET="$RAZORPAY_KEY_SECRET" \
+            -e FRONTEND_DOMAIN="$FRONTEND_DOMAIN" \
+            -e LOG_DIRECTORY="$LOG_DIRECTORY" \
             harmanxze/nexa-backend:latest
