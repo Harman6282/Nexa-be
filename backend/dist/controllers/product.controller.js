@@ -143,16 +143,17 @@ exports.updateProduct = updateProduct;
 const deleteProduct = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id: productId } = req.params;
     if (!productId) {
-        throw new apiError_1.ApiError(401, "Enter valid product Id");
+        throw new apiError_1.ApiError(400, "Invalid product id");
     }
-    const product = yield __1.prisma.product.delete({
-        where: {
-            id: productId,
-        },
+    const product = yield __1.prisma.product.findUnique({
+        where: { id: productId },
     });
     if (!product) {
         throw new apiError_1.ApiError(404, "Product not found");
     }
+    yield __1.prisma.product.delete({
+        where: { id: productId },
+    });
     return res
         .status(200)
         .json(new apiResponse_1.ApiResponse(200, "Product deleted successfully"));

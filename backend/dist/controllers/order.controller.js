@@ -19,8 +19,20 @@ const apiResponse_1 = require("../utils/apiResponse");
 const products_1 = require("../schema/products");
 const razorpay_1 = __importDefault(require("../utils/razorpay"));
 const crypto_1 = __importDefault(require("crypto"));
+const email_1 = require("../utils/email");
+const shortid_1 = __importDefault(require("shortid"));
 const verifyPayment = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    const existingOrder = yield __1.prisma.order.findUnique({
+        where: { razorpayOrderId: razorpay_order_id },
+        include: { items: true },
+    });
+    if (!existingOrder) {
+        throw new apiError_1.ApiError(404, "Order not found");
+    }
+    if (existingOrder.paymentStatus === "PAID") {
+        return res.json(new apiResponse_1.ApiResponse(200, existingOrder, "Payment already verified"));
+    }
     const sign = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSign = crypto_1.default
         .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
@@ -29,16 +41,63 @@ const verifyPayment = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     if (razorpay_signature !== expectedSign) {
         throw new apiError_1.ApiError(400, "Invalid payment signature");
     }
-    // update order status
-    const updatedOrder = yield __1.prisma.order.update({
-        where: { razorpayOrderId: razorpay_order_id },
-        data: {
-            paymentStatus: "PAID",
-            razorpayPaymentId: razorpay_payment_id,
-            razorpaySignature: razorpay_signature,
-        },
-        include: { items: true },
+    // update order status and remove ordered products from cart only after payment is confirmed
+    const updatedOrder = yield __1.prisma.$transaction((tx) => __awaiter(void 0, void 0, void 0, function* () {
+        const paidOrder = yield tx.order.update({
+            where: { razorpayOrderId: razorpay_order_id },
+            data: {
+                paymentStatus: "PAID",
+                razorpayPaymentId: razorpay_payment_id,
+                razorpaySignature: razorpay_signature,
+            },
+            include: { items: true },
+        });
+        const cart = yield tx.cart.findUnique({
+            where: { userId: paidOrder.userId },
+            include: { items: true },
+        });
+        if (cart && cart.items.length > 0) {
+            const orderedQtyByItemKey = new Map();
+            for (const item of paidOrder.items) {
+                const key = `${item.productId}:${item.variantId}`;
+                orderedQtyByItemKey.set(key, (orderedQtyByItemKey.get(key) || 0) + item.quantity);
+            }
+            for (const cartItem of cart.items) {
+                const key = `${cartItem.productId}:${cartItem.variantId}`;
+                const orderedQty = orderedQtyByItemKey.get(key);
+                if (!orderedQty)
+                    continue;
+                if (cartItem.quantity > orderedQty) {
+                    yield tx.cartItem.update({
+                        where: { id: cartItem.id },
+                        data: { quantity: cartItem.quantity - orderedQty },
+                    });
+                }
+                else {
+                    yield tx.cartItem.delete({
+                        where: { id: cartItem.id },
+                    });
+                }
+            }
+        }
+        return paidOrder;
+    }));
+    const user = yield __1.prisma.user.findUnique({
+        where: { id: updatedOrder.userId },
     });
+    const emailData = {
+        orderId: updatedOrder.id,
+        email: user === null || user === void 0 ? void 0 : user.email,
+        customerName: user === null || user === void 0 ? void 0 : user.name,
+        orderDate: updatedOrder.createdAt.toDateString(),
+        totalAmount: updatedOrder.total,
+        paymentmethod: "Razorpay",
+    };
+    if (updatedOrder) {
+        (0, email_1.sendOrderConfirmationEmail)(emailData.email, emailData.orderId, emailData.customerName, emailData.orderDate, emailData.totalAmount, emailData.paymentmethod).catch((error) => {
+            console.error("Order confirmation email failed:", error);
+        });
+    }
     return res.json(new apiResponse_1.ApiResponse(200, updatedOrder, "Payment verified successfully"));
 });
 exports.verifyPayment = verifyPayment;
@@ -48,6 +107,10 @@ const createOrder = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     const parsed = products_1.CreateOrderSchema.safeParse(req.body);
     if (!parsed.success) {
         throw new apiError_1.ApiError(400, parsed.error.errors[0].message, parsed.error.errors);
+    }
+    const user = yield __1.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+        throw new apiError_1.ApiError(404, "User not found");
     }
     const { cartId, addressId } = parsed.data;
     const cart = yield __1.prisma.cart.findUnique({
@@ -76,7 +139,7 @@ const createOrder = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     const options = {
         amount: total * 100,
         currency: "INR",
-        receipt: `receipt_${Date.now()}`,
+        receipt: shortid_1.default.generate(),
     };
     //? create razorpay order here
     const razorpayOrder = yield razorpay_1.default.orders.create(options);
@@ -105,13 +168,9 @@ const createOrder = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
             },
         },
     });
-    yield __1.prisma.cartItem.deleteMany({
-        where: { cartId },
-    });
     return res.json(new apiResponse_1.ApiResponse(201, {
         order: newOrder,
         razorpayOrder,
-        key: process.env.RAZORPAY_KEY_ID, // send to frontend
     }, "Order created successfully"));
 });
 exports.createOrder = createOrder;

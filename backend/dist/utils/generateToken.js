@@ -11,13 +11,16 @@ const generateToken = (user, res) => {
         id: user.id,
         email: user.email,
         role: user.role,
+        emailVerified: user.emailVerified,
     }, secrets_1.JWT_SECRET, {
         expiresIn: "15d",
     });
     res.cookie("accessToken", token, {
-        maxAge: 15 * 24 * 60 * 60 * 1000,
         httpOnly: true,
-        secure: process.env.NODE_ENV !== "development",
+        secure: true,
+        sameSite: "none",
+        path: "/",
+        maxAge: 15 * 24 * 60 * 60 * 1000,
     });
 };
 exports.generateToken = generateToken;

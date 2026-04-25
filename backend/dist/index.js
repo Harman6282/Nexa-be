@@ -46,9 +46,12 @@ const client_1 = require("@prisma/client");
 const errorHandler_1 = __importDefault(require("./middlewares/errorHandler"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const cors_1 = __importDefault(require("cors"));
+const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
+const Logger_1 = __importDefault(require("./core/Logger"));
+const requestLogger_1 = require("./core/requestLogger");
 const app = (0, express_1.default)();
 app.set("trust proxy", 1);
-const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
+app.use(requestLogger_1.requestLogger);
 app.use(express_1.default.json());
 app.use((0, cookie_parser_1.default)());
 const limiter = (0, express_rate_limit_1.default)({
@@ -66,4 +69,5 @@ app.use("/api", routes_1.default);
 app.use(errorHandler_1.default);
 app.listen(secrets_1.PORT, () => {
     console.log(`Server is running on port ${secrets_1.PORT} 👍`);
+    Logger_1.default.info(`Server is running on port ${secrets_1.PORT} 👍`);
 });
