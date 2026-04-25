@@ -34,19 +34,4 @@ jobs:
         run: docker rm -f nexa-server-container || true
 
       - name: Run docker container
-        run: |
-          docker run -d -p 3001:3001 --name nexa-server-container \
-            --restart unless-stopped \
-            -e PORT=${{ secrets.PORT }} \
-            -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
-            -e NODE_ENV=${{ secrets.NODE_ENV }} \
-            -e DATABASE_URL=${{ secrets.DATABASE_URL }} \
-            -e CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }} \
-            -e CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }} \
-            -e CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }} \
-            -e RESEND_API_KEY=${{ secrets.RESEND_API_KEY }} \
-            -e RAZORPAY_KEY_ID=${{ secrets.RAZORPAY_KEY_ID }} \
-            -e RAZORPAY_KEY_SECRET=${{ secrets.RAZORPAY_KEY_SECRET }} \
-            -e FRONTEND_DOMAIN=${{ secrets.FRONTEND_DOMAIN }} \
-            -e LOG_DIRECTORY=${{ secrets.LOG_DIRECTORY }} \
-            harmanxze/nexa-backend:latest
+        run: docker run -d -p 3001:3001 --name nexa-server-container --restart unless-stopped -e PORT=${{ secrets.PORT }} -e JWT_SECRET=${{ secrets.JWT_SECRET }} -e NODE_ENV=${{ secrets.NODE_ENV }} -e DATABASE_URL=${{ secrets.DATABASE_URL }} -e CLOUDINARY_CLOUD_NAME=${{ secrets.CLOUDINARY_CLOUD_NAME }} -e CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }} -e CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }} -e RESEND_API_KEY=${{ secrets.RESEND_API_KEY }} -e RAZORPAY_KEY_ID=${{ secrets.RAZORPAY_KEY_ID }} -e RAZORPAY_KEY_SECRET=${{ secrets.RAZORPAY_KEY_SECRET }} -e FRONTEND_DOMAIN=${{ secrets.FRONTEND_DOMAIN }} -e LOG_DIRECTORY=${{ secrets.LOG_DIRECTORY }} harmanxze/nexa-backend:latest
