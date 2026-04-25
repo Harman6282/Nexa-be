@@ -1,12 +1,21 @@
 import { Router } from "express";
-import { login, logout, me, signup, verifyToken } from "../controllers/auth.controller";
+import {
+  login,
+  logout,
+  me,
+  signup,
+  verifyToken,
+} from "../controllers/auth.controller";
 import { asyncHandler } from "../utils/asyncHandler";
 import { authenticate } from "../middlewares/auth/authenticate";
 
 const authRoutes: Router = Router();
 
+authRoutes.get("/health", (req, res) => {
+  res.status(200).json({ message: "Health check pass" });
+});
 authRoutes.post("/signup", asyncHandler(signup));
-authRoutes.post("/verify-email", asyncHandler(verifyToken))
+authRoutes.post("/verify-email", asyncHandler(verifyToken));
 authRoutes.post("/login", asyncHandler(login));
 authRoutes.post("/logout", [authenticate], asyncHandler(logout));
 authRoutes.get("/me", [authenticate], asyncHandler(me));

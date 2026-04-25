@@ -6,7 +6,7 @@ import { ApiResponse } from "../utils/apiResponse";
 import { CreateOrderSchema } from "../schema/products";
 import razorpayInstance from "../utils/razorpay";
 import crypto from "crypto";
-import { pushOrderToEmailQueue } from "../mq/orderConfirmEmail";
+import { sendOrderConfirmationEmail } from "../utils/email";
 import shortid from "shortid";
 
 export const verifyPayment: any = async (req: Request, res: Response) => {
@@ -98,7 +98,16 @@ export const verifyPayment: any = async (req: Request, res: Response) => {
   };
 
   if (updatedOrder) {
-    await pushOrderToEmailQueue(emailData);
+    sendOrderConfirmationEmail(
+      emailData.email,
+      emailData.orderId,
+      emailData.customerName,
+      emailData.orderDate,
+      emailData.totalAmount,
+      emailData.paymentmethod
+    ).catch((error) => {
+      console.error("Order confirmation email failed:", error);
+    });
   }
 
   return res.json(

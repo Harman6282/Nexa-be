@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const asyncHandler_1 = require("../utils/asyncHandler");
+const authenticate_1 = require("../middlewares/auth/authenticate");
+const admin_controller_1 = require("../controllers/admin/admin.controller");
+const adminRoutes = (0, express_1.Router)();
+adminRoutes.get("/getAllOrders", [authenticate_1.authenticate, authenticate_1.adminCheck], (0, asyncHandler_1.asyncHandler)(admin_controller_1.getAllOrdersAdmin));
+adminRoutes.get("/dashboard", [authenticate_1.authenticate, authenticate_1.adminCheck], (0, asyncHandler_1.asyncHandler)(admin_controller_1.getDashboard));
+adminRoutes.get("/customers", [authenticate_1.authenticate, authenticate_1.adminCheck], (0, asyncHandler_1.asyncHandler)(admin_controller_1.getCustomersData));
+adminRoutes.put("/updateStock/:variantId/:stock", [authenticate_1.authenticate, authenticate_1.adminCheck], (0, asyncHandler_1.asyncHandler)(admin_controller_1.updateStock));
+adminRoutes.put("/updateStatus/:id", [authenticate_1.authenticate, authenticate_1.adminCheck], (0, asyncHandler_1.asyncHandler)(admin_controller_1.updateOrderStatus));
+adminRoutes.post("/category", [authenticate_1.authenticate, authenticate_1.adminCheck], (0, asyncHandler_1.asyncHandler)(admin_controller_1.createCategory));
+adminRoutes.put("/category/:id", [authenticate_1.authenticate, authenticate_1.adminCheck], (0, asyncHandler_1.asyncHandler)(admin_controller_1.updateCategory));
+adminRoutes.delete("/category/:id", [authenticate_1.authenticate, authenticate_1.adminCheck], (0, asyncHandler_1.asyncHandler)(admin_controller_1.deleteCategory));
+exports.default = adminRoutes;

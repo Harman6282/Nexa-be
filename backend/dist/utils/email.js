@@ -1,22 +1,31 @@
-import { Resend } from "resend";
-import { ApiError } from "./apiError";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-export async function sendVerificationEmail(
-  email: string,
-  verificationToken: string
-) {
-  if (!process.env.RESEND_API_KEY) {
-    throw new Error("RESEND_API_KEY is not defined");
-  }
-
-  try {
-    const { data, error } = await resend.emails.send({
-      from: "Nexa Clothing Store <send@nexa.harmanxze.com>",
-      to: [email],
-      subject: "Your Nexa Fashion Verification Code",
-      html: `
+"use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.sendVerificationEmail = sendVerificationEmail;
+exports.sendWelcomeEmail = sendWelcomeEmail;
+exports.sendOrderConfirmationEmail = sendOrderConfirmationEmail;
+const resend_1 = require("resend");
+const apiError_1 = require("./apiError");
+const resend = new resend_1.Resend(process.env.RESEND_API_KEY);
+function sendVerificationEmail(email, verificationToken) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (!process.env.RESEND_API_KEY) {
+            throw new Error("RESEND_API_KEY is not defined");
+        }
+        try {
+            const { data, error } = yield resend.emails.send({
+                from: "Nexa Clothing Store <send@nexa.harmanxze.com>",
+                to: [email],
+                subject: "Your Nexa Fashion Verification Code",
+                html: `
         <tr> <td style="background:#000000; padding:24px; text-align:center;"> 
         <h1 style="margin:0; color:#ffffff; font-size:26px; letter-spacing:1px;"> Nexa Fashion </h1> 
         </td> </tr> <!-- Body --> <tr> <td style="padding:30px;"> 
@@ -34,40 +43,34 @@ export async function sendVerificationEmail(
           <p style="margin:0; font-size:12px; color:#999999;"> © 2025 Nexa Fashion. All rights reserved. </p> </td> </tr> </table> </td> </tr> </table>
 
       `,
+            });
+            if (error) {
+                console.error("Resend email error:", error);
+                throw new apiError_1.ApiError(error.statusCode || 500, "Failed to send verification email", error.message ? [error.message] : undefined);
+            }
+            return {
+                success: true,
+                messageId: data === null || data === void 0 ? void 0 : data.id,
+                error: error,
+            };
+        }
+        catch (err) {
+            console.error("Send verification email failed:", err);
+            throw err;
+        }
     });
-
-    if (error) {
-      console.error("Resend email error:", error);
-      throw new ApiError(
-        error.statusCode || 500,
-        "Failed to send verification email",
-        error.message ? [error.message] : undefined
-      );
-    }
-
-    return {
-      success: true,
-      messageId: data?.id,
-      error: error,
-    };
-  } catch (err) {
-    console.error("Send verification email failed:", err);
-
-    throw err;
-  }
 }
-
-export async function sendWelcomeEmail(email: string) {
-  if (!process.env.RESEND_API_KEY) {
-    throw new Error("RESEND_API_KEY is not defined");
-  }
-
-  try {
-    const { data, error } = await resend.emails.send({
-      from: "Nexa Clothing Store <send@nexa.harmanxze.com>",
-      to: [email],
-      subject: "Welcome to Nexa Fashion — Where Style Begins",
-      html: `
+function sendWelcomeEmail(email) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (!process.env.RESEND_API_KEY) {
+            throw new Error("RESEND_API_KEY is not defined");
+        }
+        try {
+            const { data, error } = yield resend.emails.send({
+                from: "Nexa Clothing Store <send@nexa.harmanxze.com>",
+                to: [email],
+                subject: "Welcome to Nexa Fashion — Where Style Begins",
+                html: `
        <tr> 
         <td style="background:#000000; padding:24px; text-align:center;">
           <h1 style="margin:0; color:#ffffff; font-size:26px; letter-spacing:1px;"> Nexa Fashion </h1> 
@@ -95,48 +98,35 @@ export async function sendWelcomeEmail(email: string) {
 
         
       `,
+            });
+            if (error) {
+                console.error("Resend email error:", error);
+                throw new apiError_1.ApiError(error.statusCode || 500, "Failed to send verification email", error.message ? [error.message] : undefined);
+            }
+            return {
+                success: true,
+                messageId: data === null || data === void 0 ? void 0 : data.id,
+                error: error,
+            };
+        }
+        catch (err) {
+            console.error("Send verification email failed:", err);
+            throw err;
+        }
     });
-
-    if (error) {
-      console.error("Resend email error:", error);
-      throw new ApiError(
-        error.statusCode || 500,
-        "Failed to send verification email",
-        error.message ? [error.message] : undefined
-      );
-    }
-
-    return {
-      success: true,
-      messageId: data?.id,
-      error: error,
-    };
-  } catch (err) {
-    console.error("Send verification email failed:", err);
-    throw err;
-  }
 }
-
 // order confirmation email
-
-export async function sendOrderConfirmationEmail(
-  email: string,
-  orderId: string,
-  customerName: string,
-  orderDate: string,
-  totalAmount: number,
-  paymentmethod: string
-) {
-  if (!process.env.RESEND_API_KEY) {
-    throw new Error("RESEND_API_KEY is not defined");
-  }
-
-  try {
-    const { data, error } = await resend.emails.send({
-      from: "Nexa Clothing Store <send@nexa.harmanxze.com>",
-      to: [email],
-      subject: "Your order has been confirmed 🎉",
-      html: `
+function sendOrderConfirmationEmail(email, orderId, customerName, orderDate, totalAmount, paymentmethod) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (!process.env.RESEND_API_KEY) {
+            throw new Error("RESEND_API_KEY is not defined");
+        }
+        try {
+            const { data, error } = yield resend.emails.send({
+                from: "Nexa Clothing Store <send@nexa.harmanxze.com>",
+                to: [email],
+                subject: "Your order has been confirmed 🎉",
+                html: `
      
       <!-- Header --> 
       <tr> 
@@ -177,24 +167,20 @@ export async function sendOrderConfirmationEmail(
             </tr> </table> </td> </tr> </table>
 
       `,
+            });
+            if (error) {
+                console.error("Resend email error:", error);
+                throw new apiError_1.ApiError(error.statusCode || 500, "Failed to send verification email", error.message ? [error.message] : undefined);
+            }
+            return {
+                success: true,
+                messageId: data === null || data === void 0 ? void 0 : data.id,
+                error: error,
+            };
+        }
+        catch (err) {
+            console.error("Send verification email failed:", err);
+            throw err;
+        }
     });
-
-    if (error) {
-      console.error("Resend email error:", error);
-      throw new ApiError(
-        error.statusCode || 500,
-        "Failed to send verification email",
-        error.message ? [error.message] : undefined
-      );
-    }
-
-    return {
-      success: true,
-      messageId: data?.id,
-      error: error,
-    };
-  } catch (err) {
-    console.error("Send verification email failed:", err);
-    throw err;
-  }
 }
